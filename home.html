@@ -50,12 +50,12 @@
 
 	/* Left and right column */
 	.column.side {
-	  width: 25%;
+	  width: 40%;
 	}
 
 	/* Middle column */
 	.column.middle {
-	  width: 50%;
+	  width: 60%;
 	}
 
 	/* Clear floats after the columns */
@@ -215,6 +215,19 @@ span.psw {
      width: 100%;
   }
 }
+table, td, th {
+  border: 1px solid black;
+  text-align:center;
+  padding:3px;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th {
+  height: 50px;
+}
 </style>
 </head>
 <body>
@@ -230,11 +243,30 @@ span.psw {
 </div>
 
 <div id="columns" class="table">
-  <div class="column side">
-    <h2></h2>
+  <div class="column side" style="width:30%">
+  <h2>My Wish List</h2>
+	<p>
+	<form action="createwishlist.php" method="get">
+		<input style="width:50%; padding: 6px 10px;" maxlength="24" minlength="24" type="text" placeholder="Group Code" name="group" required>
+		<input style="width:50%; padding: 6px 10px;" maxlength="300" type="text" placeholder="Wish List" name="wishlist" required>
+		<button type="submit" class="signupbtn">Create Wish List</button>
+	</form>
+	</p>
+	<h2>Santa Lookup</h2>
+	<table id="mysanta">
+			<thead>
+			<tr>
+				<th>Group Name</th>
+				<th>Your Assignment</th>
+				<th>Wish List</th>
+			</tr>
+		</thead>
+		<tbody>
+		
+		</tbody>
+	</table>
   </div>
-  
-  <div class="column middle">
+  <div class="column middle" style="width:30%;">
     <h2>My Groups</h2>
 	<p>
 	<form action="joingroup.php" method="get">
@@ -246,6 +278,7 @@ span.psw {
     <table id="mygroups">
 			<thead>
 			<tr>
+				<th>Group Name</th>
 				<th>Group Code</th>
 			</tr>
 		</thead>
@@ -255,10 +288,11 @@ span.psw {
 	</table>
   </div>
   
-  <div class="column side">
+  <div class="column side" style="width:40%">
     <h2>Owned Groups</h2>
 	<p>
 	<form action="creategroup.php" method="get">
+		<input style="width:50%; padding: 6px 10px;" type="text" placeholder="Group Name" name="group_name" required>
 		<input style="width:50%; padding: 6px 10px;" type="text" placeholder="Group Password" name="psw" required>
 		<button type="submit" class="signupbtn">Create Group</button>
 	</form>
@@ -266,7 +300,9 @@ span.psw {
     <table id="ownedgroups">
 		<thead>
 			<tr>
+				<th>Group Name</th>
 				<th>Group Code</th>
+				<th>Group Password</th>
 			</tr>
 		</thead>
 		<tbody>

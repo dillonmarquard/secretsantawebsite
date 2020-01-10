@@ -29,14 +29,48 @@ function createUser(_res,_first_name,_last_name,_username,_password){
 	});
 };
 
-function createGroup(_owner_id,_password){
+function create_wish_list(_res,__id,_group_id,_wish_list){
+	var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
+	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+	client.connect(function(err) {
+		if(err) throw err;
+		
+		var collection = client.db("secretSanta").collection("groups");
+		var query = { _id: new ObjectId(_group_id), people_list: new ObjectId(__id)};
+		collection.find(query).toArray(function(err, result) { // verify user is in group
+			if (err) throw err;
+			if (result.length == 1) { // verified; add wish list to user's document
+				// remove existing list for group if it exists
+				var collection = client.db("secretSanta").collection("people");
+				var myquery = { _id: new ObjectId(__id)};
+				var newvalues = { $pull: { "wish_list": { "group_id": new ObjectId(_group_id) } } };
+				collection.updateOne(myquery, newvalues, function(err, res) {
+				});		
+				// add new wish_list to user's wish_list
+				var collection = client.db("secretSanta").collection("people");
+				var myquery = { _id: new ObjectId(__id)};
+				var wish_listobj = {group_id:new ObjectId(_group_id), wish: _wish_list};
+				var newvalues = { $push: { "wish_list":  wish_listobj } };
+				collection.updateOne(myquery, newvalues, function(err, res) {
+					client.close()
+					return _res.end();
+				});		
+			} else {
+				client.close()
+				return _res.end();
+			}
+		}); 
+	});
+}
+
+function createGroup(_owner_id, _group_name, _password){
 	var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
 	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 	client.connect(function(err) {
 		if(err) throw err;
 		// first query adding a new group to groups with the owners id and password
 		var collection = client.db("secretSanta").collection("groups");
-		var myobj = { owner_id: _owner_id, group_password: _password, people_list: [ new ObjectId(_owner_id)] };
+		var myobj = { owner_id: new ObjectId(_owner_id), group_password: _password, group_name: _group_name, people_list: [ new ObjectId(_owner_id)],people_assignments:[] };
 		collection.insertOne(myobj, function(err, res) {
 			if (err) throw err;
 			// second query adding the group_id to the owner's owned_groups and groups Arrays
@@ -90,8 +124,6 @@ function joinGroup(__id, _group, _grouppsw,res){
 };
 
 function login_verificiation(_username, _password,cookies,_res){
-	var mongo = require('mongodb');
-	var mongoClient = mongo.MongoClient;
 	var uri = "mongodb+srv://tempuser:LYiYF5eT8iLasguV@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority";
 	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 	client.connect(function(err) {
@@ -118,7 +150,8 @@ function login_verificiation(_username, _password,cookies,_res){
 // start the webserver and handles interacting with the server
 var keys = ['penguin']
 
-http.createServer(function (req, res) {
+http.createServer(async function (req, res) {
+	req.setTimeout(10000);
 	var q = url.parse(req.url, true);
 	var path = "C:/Users/dmarq/Desktop/server/secretsanta/" + q.pathname;
 	var loggedpath = "C:/Users/dmarq/Desktop/server/secretsanta/home.html";
@@ -141,13 +174,58 @@ http.createServer(function (req, res) {
 		res.writeHead(302, {'Location': 'index.html' });
 		return res.end();
 	}
+	if(q.pathname == '/assignsantas.php'){ // from the group doc in people_list, randomize and then create objects with santa: and giftee:
+		var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
+		var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+		client.connect(function(err) {
+			if(err) throw err;
+			var collection = client.db("secretSanta").collection("groups");
+			var query = { _id: new ObjectId(qdata.group)};
+			//console.log(query)
+			collection.find(query, { projection: {_id:0,people_list:1}}).toArray(function(err, result) {
+				if (err) {
+					
+				} else {
+					//console.log(result[0].people_list)
+					for (var i = result[0].people_list.length - 1; i > 0; i--) { // randomize list
+						var j = Math.floor(Math.random() * (i + 1));
+						var temp = result[0].people_list[i];
+						result[0].people_list[i] = result[0].people_list[j];
+						result[0].people_list[j] = temp;
+					}
+					
+					var sendobj = [];
+					var collection = client.db("secretSanta").collection("groups");
+					var newvalues = { $set: { "people_assignments":  sendobj } };
+					collection.updateOne(query, newvalues, function(err, res2) {
+						if(err) console.log(err);
+					});
+					
+					// console.log(result[0].people_list)
+					for(var i = 0; i < result[0].people_list.length; i++){ // assign people to each other sequentially
+						var sendobj = {santa: new ObjectId(result[0].people_list[i]), giftee: new ObjectId(result[0].people_list[(i+1)%result[0].people_list.length])};
+						var collection = client.db("secretSanta").collection("groups");
+						var newvalues = { $push: { "people_assignments":  sendobj } };
+						collection.updateOne(query, newvalues, function(err, res2) {
+							if(err) console.log(err);
+						});		
+					}
+				}
+			});
+		});
+	}
+	if(q.pathname == '/createwishlist.php'){
+		create_wish_list(res, _id, qdata.group, qdata.wishlist);
+		res.writeHead(302, {'Location': 'home.html' });
+		return res.end();
+	}
 	if(q.pathname == '/joingroup.php'){
 		joinGroup(_id, qdata.group, qdata.grouppsw,res);
 		res.writeHead(302, {'Location': 'home.html' });
 		return res.end();
 	}
 	if(q.pathname == '/creategroup.php'){
-		createGroup(_id, qdata.psw);
+		createGroup(_id, qdata.group_name, qdata.psw);
 		res.writeHead(302, {'Location': 'home.html' });
 		return res.end();
 	}
@@ -174,30 +252,90 @@ http.createServer(function (req, res) {
 				var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 				client.connect(function(err) {
 					if(err) throw err;
-					var collection = client.db("secretSanta").collection("people");
-					var query = { _id: new ObjectId(_id) };
-					collection.find(query).toArray(function(err, result) {
-						// console.log(result[0].owned_groups)
+					var dbo = client.db('secretSanta');
+					dbo.collection('people').aggregate([
+					{ $lookup:
+						{
+							from: 'groups',
+							localField: 'groups',
+							foreignField: '_id',
+							as: 'groupdetails'
+						}
+					}]).toArray(function(err, result) {
 						if (err) throw err;
-						result[0].owned_groups.forEach(index => {
-							res.write("<script>var tableRef = document.getElementById('ownedgroups').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + index + "');newCell.appendChild(newText);</script>");
+						// console.log(result[0].groupdetails);
+						// console.log(result[0]._id == _id);
+						result.forEach(people => {
+							if(people._id == _id){
+								people.groupdetails.forEach(index => {
+									//console.log(index)
+									res.write("<script>var tableRef = document.getElementById('mygroups').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + index._id + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + index.group_name + "');newCell.appendChild(newText);</script>");
+								});
+							}
 						});
 					});
-					collection = client.db("secretSanta").collection("people");
-					query = { _id: new ObjectId(_id) };
-					collection.find(query).toArray(function(err, result) {
-						// console.log(result[0].owned_groups)
+					
+					dbo.collection('people').aggregate([
+					{ $lookup:
+						{
+							from: 'groups',
+							localField: 'owned_groups',
+							foreignField: '_id',
+							as: 'groupdetails'
+						}
+					}]).toArray(function(err, result) {
 						if (err) throw err;
-						result[0].groups.forEach(index => {
-							res.write("<script>var tableRef = document.getElementById('mygroups').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + index + "');newCell.appendChild(newText);</script>");
+						// console.log(result[0].groupdetails);
+						// console.log(result[0]._id == _id);
+						result.forEach(people => {
+							if(people._id == _id){
+								people.groupdetails.forEach(index => {
+								res.write("<script>var tableRef = document.getElementById('ownedgroups').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + index.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + index._id + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('" + index.group_password + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(3);var btn = document.createElement('input');btn.type = 'button';btn.className = 'btn';btn.value = 'assign';btn.onclick = function(){window.location='http://secretsanta.hopto.org/assignsantas.php?group=" + index._id + "';};newCell.appendChild(btn);</script>");
+								});
+								// console.log(people);
+								// client.close();
+								// res.end();
+							}
 						});
-						client.close();
-						res.end();
+					});
+					
+					var dbo = client.db('secretSanta');
+					dbo.collection('groups').aggregate([
+					{ $lookup:
+						{
+							from: 'people',
+							localField: 'people_assignments.giftee',
+							foreignField: '_id',
+							as: 'gifteedetails'
+						}
+					}]).toArray(function(err, result) {
+						if (err) throw err;
+						//console.log(result)
+						result.forEach(group3 => {
+							group3.people_assignments.forEach(assignment => {
+								if(_id == assignment.santa){
+									var dbo = client.db("secretSanta");
+									var query = { _id: new ObjectId(assignment.giftee)};
+									dbo.collection('people').find(query).toArray(function(err, result2) {
+										if (err) throw err;
+										// console.log(result2[0]);
+										result2[0].wish_list.forEach(wishlist => {
+											if (group3._id.toString() == wishlist.group_id.toString() ){
+												res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group3.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + result2[0].first_name + " " + result2[0].last_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('" + wishlist.wish + "');newCell.appendChild(newText);</script>");
+											}
+										});
+									});
+									//res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + assignment.giftee + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('" +  + "');newCell.appendChild(newText);</script>");
+
+								}
+							});
+							//client.close();
+							//return res.end();
+						});
 					});
 				});
+			});
 					
-				
-			}); 
 		} else { //index.html										// not logged in
 			fs.readFile(path, function(err, data) { 
 				if (err) {
