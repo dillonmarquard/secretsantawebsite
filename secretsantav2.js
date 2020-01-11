@@ -11,7 +11,7 @@ function createUser(_res,_first_name,_last_name,_username,_password){
 	var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
 	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 	client.connect(function(err) {
-		if(err) throw err;
+		if(err) return;
 		var collection = client.db("secretSanta").collection("people");
 		var myobj = { first_name: _first_name, last_name: _last_name, username: _username, password:_password,groups:[],owned_groups:[],wish_list:[]};
 		collection.insertOne(myobj, function(err, res) {
@@ -33,12 +33,12 @@ function create_wish_list(_res,__id,_group_id,_wish_list){
 	var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
 	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 	client.connect(function(err) {
-		if(err) throw err;
+		if(err) return;
 		
 		var collection = client.db("secretSanta").collection("groups");
 		var query = { _id: new ObjectId(_group_id), people_list: new ObjectId(__id)};
 		collection.find(query).toArray(function(err, result) { // verify user is in group
-			if (err) throw err;
+			if (err) return;
 			if (result.length == 1) { // verified; add wish list to user's document
 				// remove existing list for group if it exists
 				var collection = client.db("secretSanta").collection("people");
@@ -67,16 +67,16 @@ function createGroup(_owner_id, _group_name, _password){
 	var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
 	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 	client.connect(function(err) {
-		if(err) throw err;
+		if(err) return;
 		// first query adding a new group to groups with the owners id and password
 		var collection = client.db("secretSanta").collection("groups");
 		var myobj = { owner_id: new ObjectId(_owner_id), group_password: _password, group_name: _group_name, people_list: [ new ObjectId(_owner_id)],people_assignments:[] };
 		collection.insertOne(myobj, function(err, res) {
-			if (err) throw err;
+			if (err) return;
 			// second query adding the group_id to the owner's owned_groups and groups Arrays
 			collection = client.db("secretSanta").collection("people");
 			collection.updateOne({_id: new ObjectId(_owner_id)}, { $push: { owned_groups: myobj._id, groups: myobj._id }}, function(err, res2) {
-				if (err) throw err;
+				if (err) return;
 				client.close();
 			}); 
 		});
@@ -91,7 +91,7 @@ function joinGroup(__id, _group, _grouppsw,res){
 		var collection = client.db("secretSanta").collection("groups");
 		var query = { _id: new ObjectId(_group), group_password: _grouppsw};
 		collection.find(query).toArray(function(err, result) {
-			if (err) throw err;
+			if (err) return;
 			if (result.length == 0) {
 				client.close();
 				return res.end("group auth failed");
@@ -99,16 +99,16 @@ function joinGroup(__id, _group, _grouppsw,res){
 				collection = client.db("secretSanta").collection("people");
 				var query = { _id: new ObjectId(__id), groups: new ObjectId(_group)};
 				collection.find(query).toArray(function(err, result2) {
-					if (err) throw err;
+					if (err) return;
 					// console.log(result2)
 					if (result2.length == 0) {
 						collection = client.db("secretSanta").collection("groups"); // add to people_list in groups for __id
 						collection.updateOne({_id: new ObjectId(_group)}, { $push: { people_list: new ObjectId(__id)}}, function(err, res2) { // adds to group people_list
-							if (err) throw err;
+							if (err) return;
 						});
 						collection = client.db("secretSanta").collection("people"); // add to groups in people for __id
 						collection.updateOne({_id: new ObjectId(__id)}, { $push: { groups: new ObjectId(_group)}}, function(err, res2) { // adds to group people_list
-							if (err) throw err;
+							if (err) return;
 							return res.end();
 							client.close();
 						});
@@ -127,11 +127,11 @@ function login_verificiation(_username, _password,cookies,_res){
 	var uri = "mongodb+srv://tempuser:LYiYF5eT8iLasguV@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority";
 	var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 	client.connect(function(err) {
-		if(err) throw err;
+		if(err) return;
 		var collection = client.db("secretSanta").collection("people");
 		var query = { username: _username, password: _password};
 		collection.find(query).toArray(function(err, result) {
-			if (err) throw err;
+			if (err) return;
 			if (result.length == 0){
 				_res.end('failed auth')
 			} else {
@@ -178,7 +178,7 @@ http.createServer(async function (req, res) {
 		var uri = "mongodb+srv://admin:zO6UqEbAGH7CKe5Y@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority"
 		var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 		client.connect(function(err) {
-			if(err) throw err;
+			if(err) return;
 			var collection = client.db("secretSanta").collection("groups");
 			var query = { _id: new ObjectId(qdata.group)};
 			//console.log(query)
@@ -198,7 +198,7 @@ http.createServer(async function (req, res) {
 					var collection = client.db("secretSanta").collection("groups");
 					var newvalues = { $set: { "people_assignments":  sendobj } };
 					collection.updateOne(query, newvalues, function(err, res2) {
-						if(err) console.log(err);
+						if(err) return;
 					});
 					
 					// console.log(result[0].people_list)
@@ -207,7 +207,7 @@ http.createServer(async function (req, res) {
 						var collection = client.db("secretSanta").collection("groups");
 						var newvalues = { $push: { "people_assignments":  sendobj } };
 						collection.updateOne(query, newvalues, function(err, res2) {
-							if(err) console.log(err);
+							if(err) return;
 						});		
 					}
 				}
@@ -251,7 +251,7 @@ http.createServer(async function (req, res) {
 				var uri = "mongodb+srv://tempuser:LYiYF5eT8iLasguV@marqdatabase-l0nln.mongodb.net/test?retryWrites=true&w=majority";
 				var client = new mongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 				client.connect(function(err) {
-					if(err) throw err;
+					if(err) return;
 					var dbo = client.db('secretSanta');
 					dbo.collection('people').aggregate([
 					{ $lookup:
@@ -262,7 +262,7 @@ http.createServer(async function (req, res) {
 							as: 'groupdetails'
 						}
 					}]).toArray(function(err, result) {
-						if (err) throw err;
+						if (err) return;
 						// console.log(result[0].groupdetails);
 						// console.log(result[0]._id == _id);
 						result.forEach(people => {
@@ -284,7 +284,7 @@ http.createServer(async function (req, res) {
 							as: 'groupdetails'
 						}
 					}]).toArray(function(err, result) {
-						if (err) throw err;
+						if (err) return;
 						// console.log(result[0].groupdetails);
 						// console.log(result[0]._id == _id);
 						result.forEach(people => {
@@ -309,7 +309,7 @@ http.createServer(async function (req, res) {
 							as: 'gifteedetails'
 						}
 					}]).toArray(function(err, result) {
-						if (err) throw err;
+						if (err) return;
 						//console.log(result)
 						result.forEach(group3 => {
 							group3.people_assignments.forEach(assignment => {
@@ -317,7 +317,7 @@ http.createServer(async function (req, res) {
 									var dbo = client.db("secretSanta");
 									var query = { _id: new ObjectId(assignment.giftee)};
 									dbo.collection('people').find(query).toArray(function(err, result2) {
-										if (err) throw err;
+										if (err) return;
 										// console.log(result2[0]);
 										result2[0].wish_list.forEach(wishlist => {
 											if (group3._id.toString() == wishlist.group_id.toString() ){
