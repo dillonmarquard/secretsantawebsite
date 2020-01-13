@@ -184,7 +184,7 @@ http.createServer(async function (req, res) {
 			//console.log(query)
 			collection.find(query, { projection: {_id:0,people_list:1}}).toArray(function(err, result) {
 				if (err) {
-					
+					return;
 				} else {
 					//console.log(result[0].people_list)
 					for (var i = result[0].people_list.length - 1; i > 0; i--) { // randomize list
@@ -319,6 +319,9 @@ http.createServer(async function (req, res) {
 									dbo.collection('people').find(query).toArray(function(err, result2) {
 										if (err) return;
 										// console.log(result2[0]);
+										if(result2[0].wish_list.length == 0){
+											res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group3.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + result2[0].first_name + " " + result2[0].last_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('');newCell.appendChild(newText);</script>");
+										}
 										result2[0].wish_list.forEach(wishlist => {
 											if (group3._id.toString() == wishlist.group_id.toString() ){
 												res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group3.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + result2[0].first_name + " " + result2[0].last_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('" + wishlist.wish + "');newCell.appendChild(newText);</script>");
