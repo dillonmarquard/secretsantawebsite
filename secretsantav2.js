@@ -311,7 +311,7 @@ http.createServer(async function (req, res) {
 						}
 					}]).toArray(function(err, result) {
 						if (err) return;
-						console.log(result)
+						//console.log(result)
 						result.forEach(group3 => {
 							group3.people_assignments.forEach(assignment => {
 								if(_id == assignment.santa){
