@@ -152,6 +152,7 @@ var keys = ['penguin']
 
 http.createServer(async function (req, res) {
 	req.setTimeout(10000);
+	try {
 	var q = url.parse(req.url, true);
 	var path = "C:/Users/dmarq/Desktop/server/secretsanta/" + q.pathname;
 	var loggedpath = "C:/Users/dmarq/Desktop/server/secretsanta/home.html";
@@ -310,7 +311,7 @@ http.createServer(async function (req, res) {
 						}
 					}]).toArray(function(err, result) {
 						if (err) return;
-						//console.log(result)
+						console.log(result)
 						result.forEach(group3 => {
 							group3.people_assignments.forEach(assignment => {
 								if(_id == assignment.santa){
@@ -318,15 +319,20 @@ http.createServer(async function (req, res) {
 									var query = { _id: new ObjectId(assignment.giftee)};
 									dbo.collection('people').find(query).toArray(function(err, result2) {
 										if (err) return;
-										// console.log(result2[0]);
-										if(result2[0].wish_list.length == 0){
-											res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group3.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + result2[0].first_name + " " + result2[0].last_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('');newCell.appendChild(newText);</script>");
-										}
+										//console.log(result2[0].wish_list.includes(group3._id));
+										var matches = 0;
 										result2[0].wish_list.forEach(wishlist => {
+											//console.log(group3._id.toString() + "     " + wishlist.group_id.toString() )
 											if (group3._id.toString() == wishlist.group_id.toString() ){
+												//console.log('list found')
+												matches+=1;
 												res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group3.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + result2[0].first_name + " " + result2[0].last_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('" + wishlist.wish + "');newCell.appendChild(newText);</script>");
 											}
 										});
+										if (matches == 0) {
+											//console.log('no list found')
+											res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group3.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + result2[0].first_name + " " + result2[0].last_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('');newCell.appendChild(newText);</script>");
+										}
 									});
 									//res.write("<script>var tableRef = document.getElementById('mysanta').getElementsByTagName('tbody')[0];var newRow   = tableRef.insertRow();var newCell  = newRow.insertCell(0);var newText  = document.createTextNode('" + group.group_name + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(1);var newText  = document.createTextNode('" + assignment.giftee + "');newCell.appendChild(newText);var newCell  = newRow.insertCell(2);var newText  = document.createTextNode('" +  + "');newCell.appendChild(newText);</script>");
 
@@ -350,5 +356,9 @@ http.createServer(async function (req, res) {
 				return res.end();
 			});
 		}
+	}
+	} catch (err) {
+		console.log(err)
+		res.end();
 	}
 }).listen(80);
